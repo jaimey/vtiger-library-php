@@ -53,6 +53,13 @@ $result = $vtiger->revise($params);
 ```php
 $result = $vtiger->describe('Contacts');
 ```
+#### Query
+```php
+$params = ['email' => 'test2@test.com'];
+$select = ['mobile'];
+
+$result = $vtiger->query('Contacts', $params, $select);
+```
 
 #### ListTypes
 ```php

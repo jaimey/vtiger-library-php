@@ -112,6 +112,34 @@ class vtiger
         );
         return $this->sendHttpRequest($data, 'GET');
     }
+
+    public function query($module, $params, array $select = [])
+    {
+        $query = $this->getQueryString($module, $params, $select);
+        $data = array(
+            'operation'     => 'query',
+            'sessionName'   => $this->sessionName,
+            'query'         => $query
+        );
+        return $this->sendHttpRequest($data, 'GET');
+    }
+
+    private function getQueryString($moduleName, array $params, array $select = [])
+    {
+        $criteria = array();
+        $select = (empty($select)) ? '*' : implode(',', $select);
+        $query = sprintf("SELECT %s FROM $moduleName", $select);
+
+        if (!empty($params)) {
+            foreach ($params as $param => $value) {
+                $criteria[] = "{$param} = '{$value}'";
+            }
+
+            $query .= sprintf(' WHERE %s ;', implode(" AND ", $criteria));
+        }
+        return $query;
+    }
+
     public function sendHttpRequest($data, $method)
     {
         $service_url    = $this->serveraddress . "/webservice.php";
