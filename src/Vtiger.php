@@ -1,5 +1,8 @@
 <?php
-class vtiger
+
+namespace Jaime;
+
+class Vtiger
 {
     public $serveraddress;
     public $userName;
@@ -8,13 +11,13 @@ class vtiger
 
     public function __construct($serveraddress, $userName, $userAccessKey)
     {
-        $this->serveraddress = $serveraddress;
+        $this->serveraddress = $serveraddress . "/webservice.php";
         $this->userName = $userName;
         $this->userAccessKey = $userAccessKey;
         $this->login();
     }
 
-    private function getToken()
+    private function getToken(): string
     {
         $data = [
             'operation' => 'getchallenge',
@@ -25,7 +28,7 @@ class vtiger
         return $token_data->result->token;
     }
 
-    private function login()
+    private function login(): void
     {
         $token = $this->getToken();
         $data = array(
@@ -37,7 +40,7 @@ class vtiger
         $this->sessionName = $result->result->sessionName;
     }
 
-    public function create($params, $module)
+    public function create(array $params, string $module): object
     {
         $element = json_encode($params);
         $data = array(
@@ -49,7 +52,7 @@ class vtiger
         return $this->sendHttpRequest($data, 'POST');
     }
 
-    public function update($params)
+    public function update(array $params): object
     {
         $element = json_encode($params);
         $data = array(
@@ -60,7 +63,7 @@ class vtiger
         return $this->sendHttpRequest($data, 'POST');
     }
 
-    public function retrieve($id)
+    public function retrieve(string $id): object
     {
         $data = array(
             'operation'     => 'retrieve',
@@ -70,7 +73,7 @@ class vtiger
         return $this->sendHttpRequest($data, 'GET');
     }
 
-    public function revise($params)
+    public function revise(array $params): object
     {
         $element = json_encode($params);
 
@@ -82,7 +85,7 @@ class vtiger
         return $this->sendHttpRequest($data, 'POST');
     }
 
-    public function describe($module)
+    public function describe(string $module): object
     {
         $data = array(
             'operation'     => 'describe',
@@ -92,7 +95,7 @@ class vtiger
         return $this->sendHttpRequest($data, 'GET');
     }
 
-    public function listTypes()
+    public function listTypes(): object
     {
         $data = array(
             'operation'     => 'listtypes',
@@ -101,7 +104,7 @@ class vtiger
         return $this->sendHttpRequest($data, 'GET');
     }
 
-    public function retrieveRelated($id, $targetLabel, $targetModule)
+    public function retrieveRelated(string $id, string $targetLabel, string $targetModule): object
     {
         $data = array(
             'operation'     => 'retrieve_related',
@@ -113,7 +116,7 @@ class vtiger
         return $this->sendHttpRequest($data, 'GET');
     }
 
-    public function query($module, $params, array $select = [])
+    public function query(string $module, array $params, array $select = []): object
     {
         $query = $this->getQueryString($module, $params, $select);
         $data = array(
@@ -124,7 +127,7 @@ class vtiger
         return $this->sendHttpRequest($data, 'GET');
     }
 
-    private function getQueryString($moduleName, array $params, array $select = [])
+    private function getQueryString(string $moduleName, array $params, array $select = []): string
     {
         $criteria = array();
         $select = (empty($select)) ? '*' : implode(',', $select);
@@ -140,26 +143,23 @@ class vtiger
         return $query;
     }
 
-    public function sendHttpRequest($data, $method)
+    public function sendHttpRequest(array $data, string $method): object
     {
-        $service_url    = $this->serveraddress . "/webservice.php";
-        $curl           = curl_init($service_url);
+        $client = new \GuzzleHttp\Client();
 
         switch ($method) {
             case 'GET':
-                $query_data = http_build_query($data);
-                curl_setopt_array($curl, array(
-                    CURLOPT_RETURNTRANSFER => 1,
-                    CURLOPT_URL => $service_url . "?" . $query_data,
-                ));
+                $response = $client->request('GET', $this->serveraddress, ['query' => $data])->getBody();
                 break;
+
             case 'POST':
-                curl_setopt($curl, 19913, true);
-                curl_setopt($curl, 47, true);
-                curl_setopt($curl, 10015, $data);
+                $response = $client->request('POST', $this->serveraddress, ['form_params' => $data])->getBody();
                 break;
         }
-        $result = json_decode(curl_exec($curl));
-        return $result;
+        $response = json_decode($response);
+        if (!$response->success) {
+            throw new \Exception($response->error->code . ": " . $response->error->message);
+        }
+        return $response;
     }
 }
